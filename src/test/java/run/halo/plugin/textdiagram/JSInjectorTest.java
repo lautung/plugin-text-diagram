@@ -28,11 +28,36 @@ class JSInjectorTest {
         String script = JSInjector.getParsedMermaidScript("html.dark", ".mermaid");
 
         assertTrue(script.contains("window[STATE_KEY]"));
-        assertTrue(script.contains("waitForMermaid"));
+        assertFalse(script.contains("<script defer src=\"/plugins/text-diagram/assets/static/mermaid.min.js\">"));
+        assertTrue(script.contains("if (getTargets().length === 0)"));
+        assertTrue(script.contains("document.createElement(\"script\")"));
+        assertTrue(script.contains("state.loadPromise"));
+        assertTrue(script.contains("state.initialization"));
+        assertTrue(script.contains("await Promise.all"));
         assertTrue(script.contains("document.addEventListener(\"pjax:success\", state.scheduleRender)"));
         assertTrue(script.contains("!element.hasAttribute(\"data-processed\")"));
-        assertTrue(script.contains("await window.mermaid.run({ nodes: targets })"));
+        assertTrue(script.contains("await mermaid.run({ nodes: targets })"));
         assertTrue(script.contains("document.addEventListener(\"DOMContentLoaded\", startRenderer, { once: true })"));
+    }
+
+    @Test
+    void shouldRetryAfterMermaidAssetLoadFailure() {
+        String script = JSInjector.getParsedMermaidScript("html.dark", ".mermaid");
+
+        assertTrue(script.contains("script.remove()"));
+        assertTrue(script.contains("state.loadPromise = null"));
+        assertTrue(script.contains("state.initialization = null"));
+        assertTrue(script.contains("script.addEventListener(\"error\", onError)"));
+        assertTrue(script.contains("Mermaid library was not loaded within 10 seconds"));
+    }
+
+    @Test
+    void shouldReuseRendererAndRefreshConfigurationAcrossPjaxNavigation() {
+        String script = JSInjector.getParsedMermaidScript("html.dark", ".mermaid");
+
+        assertTrue(script.contains("state.updateConfiguration"));
+        assertTrue(script.contains("existingState.updateConfiguration(configuration)"));
+        assertTrue(script.contains("data-halo-text-diagram-mermaid"));
     }
 
     @Test

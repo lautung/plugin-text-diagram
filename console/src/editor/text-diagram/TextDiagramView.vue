@@ -11,6 +11,9 @@ const mermaidRenderConfig = {
 let mermaidLoader: Promise<typeof import("mermaid").default> | undefined;
 let mermaidRenderChain: Promise<void> = Promise.resolve();
 let mermaidElementId = 0;
+let plantUmlEncoderLoader:
+  | Promise<typeof import("./plantuml/encoder")>
+  | undefined;
 
 function getMermaid() {
   if (!mermaidLoader) {
@@ -36,12 +39,21 @@ function renderMermaid(graphDefinition: string) {
   );
   return render;
 }
+
+function getPlantUmlEncoder() {
+  if (!plantUmlEncoderLoader) {
+    plantUmlEncoderLoader = import("./plantuml/encoder").catch((error) => {
+      plantUmlEncoderLoader = undefined;
+      throw error;
+    });
+  }
+
+  return plantUmlEncoderLoader;
+}
 </script>
 <script lang="ts" setup>
 import { nodeViewProps, NodeViewWrapper } from "@halo-dev/richtext-editor";
-import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { compress } from "./plantuml/encoder";
-import { useDebounceFn } from "@vueuse/core";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import IcOutlineTipsAndUpdates from "~icons/ic/outline-tips-and-updates";
 import IcOutlineFullscreen from "~icons/ic/outline-fullscreen";
 import IcOutlineFullscreenExit from "~icons/ic/outline-fullscreen-exit";
@@ -50,6 +62,7 @@ const props = defineProps(nodeViewProps);
 const previewRef = ref<HTMLElement>();
 const fullscreen = ref(false);
 let renderRequestId = 0;
+let previewTimer: number | undefined;
 
 const languages = [
   {
@@ -87,12 +100,19 @@ function renderError(element: HTMLElement, error: unknown) {
   element.replaceChildren(pre);
 }
 
+function isCurrentRender(requestId: number, element: HTMLElement) {
+  return (
+    requestId === renderRequestId &&
+    element === previewRef.value &&
+    element.isConnected
+  );
+}
+
 // render as svg
-const doRenderPreview = async function () {
+const doRenderPreview = async function (currentRequestId: number) {
   const element = previewRef.value;
   if (!element) return;
 
-  const currentRequestId = ++renderRequestId;
   const graphDefinition = props.node.attrs.content || "";
   const diagramType = languageValue.value;
   element.replaceChildren();
@@ -105,24 +125,33 @@ const doRenderPreview = async function () {
     case "mermaid": {
       try {
         const { svg } = await renderMermaid(graphDefinition);
-        if (currentRequestId !== renderRequestId) return;
+        if (!isCurrentRender(currentRequestId, element)) return;
 
         element.innerHTML = svg;
       } catch (error) {
-        if (currentRequestId === renderRequestId) {
+        if (isCurrentRender(currentRequestId, element)) {
           renderError(element, error);
         }
       }
       break;
     }
     case "plantuml": {
-      const url = compress(graphDefinition);
-      if (currentRequestId !== renderRequestId) return;
+      try {
+        const { compress } = await getPlantUmlEncoder();
+        if (!isCurrentRender(currentRequestId, element)) return;
 
-      if (props.node.attrs.src !== url) {
-        props.updateAttributes({ src: url });
+        const url = compress(graphDefinition);
+        if (!isCurrentRender(currentRequestId, element)) return;
+
+        if (props.node.attrs.src !== url) {
+          props.updateAttributes({ src: url });
+        }
+        element.innerHTML = `<img src="${url}" alt="plantuml"/>`;
+      } catch (error) {
+        if (isCurrentRender(currentRequestId, element)) {
+          renderError(element, error);
+        }
       }
-      element.innerHTML = `<img src="${url}" alt="plantuml"/>`;
       break;
     }
     default:
@@ -130,18 +159,35 @@ const doRenderPreview = async function () {
   }
 };
 
-const renderPreview = useDebounceFn(() => doRenderPreview(), 250);
+function clearPreviewTimer() {
+  if (previewTimer !== undefined) {
+    window.clearTimeout(previewTimer);
+    previewTimer = undefined;
+  }
+}
 
-onMounted(async () => {
-  watch(
-    () => [props.node.attrs.content, props.node.attrs.type],
-    () => {
-      nextTick(() => {
-        renderPreview();
-      });
-    },
-    { immediate: true }
-  );
+function scheduleRenderPreview() {
+  const requestId = ++renderRequestId;
+  clearPreviewTimer();
+  previewTimer = window.setTimeout(() => {
+    previewTimer = undefined;
+    void doRenderPreview(requestId);
+  }, 250);
+}
+
+watch(
+  () => [props.node.attrs.content, props.node.attrs.type],
+  scheduleRenderPreview,
+  { flush: "post" }
+);
+
+onMounted(() => {
+  scheduleRenderPreview();
+});
+
+onBeforeUnmount(() => {
+  clearPreviewTimer();
+  renderRequestId++;
 });
 
 // text diagram editor
