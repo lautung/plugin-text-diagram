@@ -5,7 +5,11 @@ public class JSInjector {
         String katexScript = """
             <script defer src="/plugins/text-diagram/assets/static/mermaid.min.js"></script>
             <script>
-                document.addEventListener("DOMContentLoaded", function() {
+                document.addEventListener("DOMContentLoaded", async function() {
+                  if (document.fonts && document.fonts.ready) {
+                    await document.fonts.ready;
+                  }
+
                   const postBody = document.body
                   let darkModel = document.querySelector('%s')
                   mermaid.initialize({
