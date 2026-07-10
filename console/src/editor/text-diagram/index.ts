@@ -99,8 +99,11 @@ export const ExtensionTextDiagram = Node.create<TextDiagramOptions>({
     return VueNodeViewRenderer(TextDiagramView);
   },
   addOptions() {
+    const parentOptions = this.parent?.();
+
     return {
-      ...this.parent?.(),
+      ...parentOptions,
+      HTMLAttributes: parentOptions?.HTMLAttributes ?? {},
       getToolboxItems({ editor }: { editor: Editor }) {
         return [
           {

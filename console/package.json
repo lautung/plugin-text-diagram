@@ -3,20 +3,20 @@
   "scripts": {
     "dev": "rsbuild build --env-mode development --watch",
     "build": "rsbuild build",
-    "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
+    "type-check": "vue-tsc --noEmit -p tsconfig.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
   },
   "dependencies": {
-    "@halo-dev/components": "^2.20.0",
-    "@halo-dev/console-shared": "^2.20.0",
-    "@halo-dev/richtext-editor": "^2.20.0",
+    "@halo-dev/components": "^2.25.1",
+    "@halo-dev/richtext-editor": "^2.25.1",
+    "@halo-dev/ui-shared": "^2.25.1",
     "@vueuse/core": "^10.11.1",
     "mermaid": "^11.6.0",
     "pako": "^2.1.0",
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@halo-dev/ui-plugin-bundler-kit": "2.21.2",
+    "@halo-dev/ui-plugin-bundler-kit": "2.25.1",
     "@iconify-json/ic": "^1.2.4",
     "@iconify-json/simple-icons": "^1.2.79",
     "@rsbuild/core": "^1.6.0",

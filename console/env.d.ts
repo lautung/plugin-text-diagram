@@ -1,13 +1,16 @@
 /// <reference types="@rsbuild/core" />
+/// <reference types="unplugin-icons/types/vue" />
 
-export {};
+declare module "~icons/*" {
+  import type { DefineComponent } from "vue";
+
+  const component: DefineComponent;
+  export default component;
+}
 
 declare module "*.vue" {
-  declare module "*.vue" {
-    // NOTE: ts-loader
-    import { defineComponent } from "vue";
+  import { defineComponent } from "vue";
 
-    const component: ReturnType<typeof defineComponent>;
-    export default component;
-  }
+  const component: ReturnType<typeof defineComponent>;
+  export default component;
 }
