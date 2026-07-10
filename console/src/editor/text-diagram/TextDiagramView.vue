@@ -1,3 +1,42 @@
+<script lang="ts">
+const mermaidRenderConfig = {
+  startOnLoad: false,
+  htmlLabels: false,
+  flowchart: {
+    htmlLabels: false,
+    useMaxWidth: false,
+  },
+};
+
+let mermaidLoader: Promise<typeof import("mermaid").default> | undefined;
+let mermaidRenderChain: Promise<void> = Promise.resolve();
+let mermaidElementId = 0;
+
+function getMermaid() {
+  if (!mermaidLoader) {
+    mermaidLoader = import("mermaid").then(({ default: mermaid }) => {
+      mermaid.initialize(mermaidRenderConfig);
+      return mermaid;
+    });
+  }
+
+  return mermaidLoader;
+}
+
+function renderMermaid(graphDefinition: string) {
+  const render = mermaidRenderChain.then(async () => {
+    const mermaid = await getMermaid();
+    const id = `text-diagram-mermaid-${++mermaidElementId}`;
+    return mermaid.render(id, graphDefinition);
+  });
+
+  mermaidRenderChain = render.then(
+    () => undefined,
+    () => undefined
+  );
+  return render;
+}
+</script>
 <script lang="ts" setup>
 import { nodeViewProps, NodeViewWrapper } from "@halo-dev/richtext-editor";
 import { computed, nextTick, onMounted, ref, watch } from "vue";
@@ -11,17 +50,6 @@ const props = defineProps(nodeViewProps);
 const previewRef = ref<HTMLElement>();
 const fullscreen = ref(false);
 let renderRequestId = 0;
-let mermaidElementId = 0;
-let mermaidLoader: Promise<typeof import("mermaid").default> | undefined;
-
-const mermaidRenderConfig = {
-  startOnLoad: false,
-  htmlLabels: false,
-  flowchart: {
-    htmlLabels: false,
-    useMaxWidth: false,
-  },
-};
 
 const languages = [
   {
@@ -48,28 +76,6 @@ const languageValue = computed({
 const language = computed(() => {
   return languages.find((lan) => lan.value === languageValue.value);
 });
-
-function getMermaid() {
-  if (!mermaidLoader) {
-    mermaidLoader = import("mermaid").then(({ default: mermaid }) => {
-      configureMermaid(mermaid);
-      return mermaid;
-    });
-  }
-
-  return mermaidLoader;
-}
-
-function configureMermaid(mermaid: typeof import("mermaid").default) {
-  const mermaidRuntime = mermaid as typeof import("mermaid").default & {
-    mermaidAPI?: {
-      reset?: () => void;
-    };
-  };
-
-  mermaidRuntime.mermaidAPI?.reset?.();
-  mermaid.initialize(mermaidRenderConfig);
-}
 
 function renderError(element: HTMLElement, error: unknown) {
   const pre = document.createElement("pre");
@@ -98,12 +104,7 @@ const doRenderPreview = async function () {
   switch (diagramType) {
     case "mermaid": {
       try {
-        const mermaid = await getMermaid();
-        if (currentRequestId !== renderRequestId) return;
-
-        configureMermaid(mermaid);
-        const id = `text-diagram-mermaid-${currentRequestId}-${++mermaidElementId}`;
-        const { svg } = await mermaid.render(id, graphDefinition);
+        const { svg } = await renderMermaid(graphDefinition);
         if (currentRequestId !== renderRequestId) return;
 
         element.innerHTML = svg;
