@@ -6,8 +6,8 @@ import { dirname, resolve } from "node:path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const OUT_DIR_PROD = "../src/main/resources/console";
-const OUT_DIR_DEV = "../build/resources/main/console";
+const OUT_DIR_PROD = "../src/main/resources/ui";
+const OUT_DIR_DEV = "../build/resources/main/ui";
 
 export default rsbuildConfig({
   rsbuild: ({ envMode }) => {

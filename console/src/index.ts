@@ -5,8 +5,13 @@ export default definePlugin({
   routes: [],
   extensionPoints: {
     "default:editor:extension:create": async () => {
-      const { ExtensionTextDiagram } = await import("./editor/text-diagram");
-      return [ExtensionTextDiagram];
+      try {
+        const { ExtensionTextDiagram } = await import("./editor/text-diagram");
+        return [ExtensionTextDiagram];
+      } catch (error) {
+        console.error("Text Diagram editor extension failed to load", error);
+        return [];
+      }
     },
   },
 });

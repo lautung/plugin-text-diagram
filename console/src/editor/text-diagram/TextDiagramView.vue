@@ -10,6 +10,18 @@ import IcOutlineFullscreenExit from "~icons/ic/outline-fullscreen-exit";
 const props = defineProps(nodeViewProps);
 const previewRef = ref<HTMLElement>();
 const fullscreen = ref(false);
+let renderRequestId = 0;
+let mermaidElementId = 0;
+let mermaidLoader: Promise<typeof import("mermaid").default> | undefined;
+
+const mermaidRenderConfig = {
+  startOnLoad: false,
+  htmlLabels: false,
+  flowchart: {
+    htmlLabels: false,
+    useMaxWidth: false,
+  },
+};
 
 const languages = [
   {
@@ -37,30 +49,75 @@ const language = computed(() => {
   return languages.find((lan) => lan.value === languageValue.value);
 });
 
+function getMermaid() {
+  if (!mermaidLoader) {
+    mermaidLoader = import("mermaid").then(({ default: mermaid }) => {
+      configureMermaid(mermaid);
+      return mermaid;
+    });
+  }
+
+  return mermaidLoader;
+}
+
+function configureMermaid(mermaid: typeof import("mermaid").default) {
+  const mermaidRuntime = mermaid as typeof import("mermaid").default & {
+    mermaidAPI?: {
+      reset?: () => void;
+    };
+  };
+
+  mermaidRuntime.mermaidAPI?.reset?.();
+  mermaid.initialize(mermaidRenderConfig);
+}
+
+function renderError(element: HTMLElement, error: unknown) {
+  const pre = document.createElement("pre");
+  pre.style.color = "red";
+  pre.style.backgroundColor = "#f6f8fa";
+  pre.style.padding = "0.75em";
+  pre.style.whiteSpace = "pre-wrap";
+  pre.textContent = error instanceof Error ? error.message : String(error);
+  element.replaceChildren(pre);
+}
+
 // render as svg
 const doRenderPreview = async function () {
   const element = previewRef.value;
   if (!element) return;
-  const graphDefinition = props.node.attrs.content;
-  switch (languageValue.value) {
+
+  const currentRequestId = ++renderRequestId;
+  const graphDefinition = props.node.attrs.content || "";
+  const diagramType = languageValue.value;
+  element.replaceChildren();
+
+  if (!graphDefinition.trim()) {
+    return;
+  }
+
+  switch (diagramType) {
     case "mermaid": {
-      // random element id
-      const id = `mermaid-${Date.now()}`;
       try {
-        const mermaid = await import("mermaid");
-        const { svg } = await mermaid.default.render(
-          id,
-          graphDefinition,
-          element
-        );
+        const mermaid = await getMermaid();
+        if (currentRequestId !== renderRequestId) return;
+
+        configureMermaid(mermaid);
+        const id = `text-diagram-mermaid-${currentRequestId}-${++mermaidElementId}`;
+        const { svg } = await mermaid.render(id, graphDefinition);
+        if (currentRequestId !== renderRequestId) return;
+
         element.innerHTML = svg;
       } catch (error) {
-        element.innerHTML = `<pre style="color: red; background-color: #f6f8fa">${error}</pre>`;
+        if (currentRequestId === renderRequestId) {
+          renderError(element, error);
+        }
       }
       break;
     }
     case "plantuml": {
       const url = compress(graphDefinition);
+      if (currentRequestId !== renderRequestId) return;
+
       if (props.node.attrs.src !== url) {
         props.updateAttributes({ src: url });
       }
@@ -76,22 +133,14 @@ const renderPreview = useDebounceFn(() => doRenderPreview(), 250);
 
 onMounted(async () => {
   watch(
-    () => props.node.attrs.content,
+    () => [props.node.attrs.content, props.node.attrs.type],
     () => {
       nextTick(() => {
         renderPreview();
       });
-    }
+    },
+    { immediate: true }
   );
-  watch(
-    () => props.node.attrs.type,
-    () => {
-      nextTick(() => {
-        renderPreview();
-      });
-    }
-  );
-  renderPreview();
 });
 
 // text diagram editor
@@ -201,10 +250,25 @@ function onEditorChange(value: string) {
 .text-diagram-preview {
   padding: 5px;
   height: 100%;
+  overflow: auto;
 }
 
 .text-diagram-preview svg {
-  width: 100%;
+  display: block;
+  max-width: none;
+  height: auto;
+  margin: 0 auto;
+}
+
+.text-diagram-preview foreignObject p {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.text-diagram-preview img {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .text-diagram-code img {

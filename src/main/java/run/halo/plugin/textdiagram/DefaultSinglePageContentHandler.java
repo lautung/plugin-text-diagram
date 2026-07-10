@@ -6,16 +6,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import run.halo.app.plugin.ReactiveSettingFetcher;
-import run.halo.app.theme.ReactivePostContentHandler;
+import run.halo.app.theme.ReactiveSinglePageContentHandler;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class DefaultPostContentHandler implements ReactivePostContentHandler {
+public class DefaultSinglePageContentHandler implements ReactiveSinglePageContentHandler {
 
     private final ReactiveSettingFetcher reactiveSettingFetcher;
 
-    private static void injectJS(PostContentContext contentContext, BasicConfig basicConfig) {
+    private static void injectJS(SinglePageContentContext contentContext, BasicConfig basicConfig) {
         String parsedScript = JSInjector.getParsedMermaidScript(
             basicConfig.getDark_class_selector(),
             basicConfig.getMermaid_selector()
@@ -24,12 +24,12 @@ public class DefaultPostContentHandler implements ReactivePostContentHandler {
     }
 
     @Override
-    public Mono<PostContentContext> handle(PostContentContext contentContext) {
+    public Mono<SinglePageContentContext> handle(SinglePageContentContext contentContext) {
         return reactiveSettingFetcher.fetch("basic", BasicConfig.class).map(basicConfig -> {
             injectJS(contentContext, basicConfig);
             return contentContext;
         }).onErrorResume(e -> {
-            log.error("TextDiagram PostContent handle failed", Throwables.getRootCause(e));
+            log.error("TextDiagram SinglePageContent handle failed", Throwables.getRootCause(e));
             return Mono.just(contentContext);
         });
     }
