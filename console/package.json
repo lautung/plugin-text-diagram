@@ -11,7 +11,7 @@
     "@halo-dev/richtext-editor": "^2.25.1",
     "@halo-dev/ui-shared": "^2.25.1",
     "@vueuse/core": "^10.11.1",
-    "mermaid": "^11.6.0",
+    "mermaid": "^11.16.0",
     "pako": "^2.1.0",
     "vue": "^3.5.16"
   },
