@@ -19,7 +19,9 @@ public class DefaultSinglePageContentHandler implements ReactiveSinglePageConten
         String parsedScript = JSInjector.getRuntimeInjection(
             basicConfig.getDark_class_selector(),
             basicConfig.getMermaid_selector(),
-            basicConfig.getMobile_layout_mode()
+            basicConfig.getMobile_layout_mode(),
+            basicConfig.getMermaid_output_format(),
+            basicConfig.getPlantuml_output_format()
         );
         contentContext.setContent(parsedScript + "\n" + contentContext.getContent());
     }

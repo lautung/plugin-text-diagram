@@ -18,6 +18,30 @@ spec:
           value: "text-diagram[data-type=mermaid]"
           help: 用于匹配mermaid的CSS选择器
         - $formkit: select
+          name: mermaid_output_format
+          label: Mermaid输出格式
+          value: svg
+          options:
+            - label: SVG
+              value: svg
+            - label: PNG
+              value: png
+            - label: WebP
+              value: webp
+          help: 控制文章页中 Mermaid 的展示和下载格式
+        - $formkit: select
+          name: plantuml_output_format
+          label: PlantUML输出格式
+          value: svg
+          options:
+            - label: SVG
+              value: svg
+            - label: PNG
+              value: png
+            - label: WebP
+              value: webp
+          help: 控制文章页中 PlantUML 的展示和下载格式
+        - $formkit: select
           name: mobile_layout_mode
           label: 移动端宽图显示方式
           value: scroll

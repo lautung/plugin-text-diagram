@@ -151,9 +151,6 @@ const doRenderPreview = async function (currentRequestId: number) {
         const url = compress(graphDefinition);
         if (!isCurrentRender(currentRequestId, element)) return;
 
-        if (props.node.attrs.src !== url) {
-          props.updateAttributes({ src: url });
-        }
         renderedSvg.value = "";
         element.innerHTML = `<img src="${url}" alt="plantuml"/>`;
       } catch (error) {

@@ -4,12 +4,21 @@ import { createMermaidAdapter } from "./mermaid-adapter";
 import { createPlantUmlAdapter } from "./plantuml-adapter";
 import { applyMobileLayout } from "./responsive";
 import { detectTheme, observeTheme } from "./theme";
-import type { DiagramAdapter, DiagramTheme, DiagramType, MobileLayoutMode, RuntimeConfig } from "./types";
+import type {
+  DiagramAdapter,
+  DiagramOutputFormat,
+  DiagramTheme,
+  DiagramType,
+  MobileLayoutMode,
+  RuntimeConfig,
+} from "./types";
 
 const DEFAULT_CONFIG: RuntimeConfig = {
   darkClassSelector: "html[class~=dark]",
   mermaidSelector: "text-diagram[data-type=mermaid]",
   mobileLayoutMode: "scroll",
+  mermaidOutputFormat: "svg",
+  plantumlOutputFormat: "svg",
 };
 
 interface RenderRecord {
@@ -28,6 +37,10 @@ export interface TextDiagramRuntime {
 
 function isDiagramType(value: string | undefined): value is DiagramType {
   return value === "mermaid" || value === "plantuml";
+}
+
+function isOutputFormat(value: unknown): value is DiagramOutputFormat {
+  return value === "svg" || value === "png" || value === "webp";
 }
 
 function errorMessage(error: unknown): string {
@@ -107,7 +120,7 @@ export function createRuntime(
     theme = nextTheme;
     records.forEach((record) => {
       record.card.setTheme(theme);
-      if (record.type === "mermaid") void renderRecord(record);
+      void renderRecord(record);
     });
   });
 
@@ -137,6 +150,12 @@ function parseConfig(script: HTMLScriptElement): RuntimeConfig {
       mobileLayoutMode: modes.includes(raw.mobileLayoutMode as MobileLayoutMode)
         ? raw.mobileLayoutMode as MobileLayoutMode
         : "scroll",
+      mermaidOutputFormat: isOutputFormat(raw.mermaidOutputFormat)
+        ? raw.mermaidOutputFormat
+        : "svg",
+      plantumlOutputFormat: isOutputFormat(raw.plantumlOutputFormat)
+        ? raw.plantumlOutputFormat
+        : "svg",
     };
   } catch {
     return DEFAULT_CONFIG;
@@ -146,9 +165,10 @@ function parseConfig(script: HTMLScriptElement): RuntimeConfig {
 export function startTextDiagramRuntime(): TextDiagramRuntime | undefined {
   const script = document.querySelector<HTMLScriptElement>("script[data-halo-text-diagram-runtime]");
   if (!script) return undefined;
-  const runtime = createRuntime(parseConfig(script), {
-    mermaid: createMermaidAdapter(),
-    plantuml: createPlantUmlAdapter(),
+  const config = parseConfig(script);
+  const runtime = createRuntime(config, {
+    mermaid: createMermaidAdapter(undefined, config.mermaidOutputFormat),
+    plantuml: createPlantUmlAdapter(config.plantumlOutputFormat),
   });
   void runtime.scan();
   return runtime;

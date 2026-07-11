@@ -50,13 +50,7 @@ export const ExtensionTextDiagram = Node.create<TextDiagramOptions>({
       src: {
         default: "",
         parseHTML: (element) => element.getAttribute("data-src"),
-        renderHTML: (attributes) => {
-          return !attributes.src
-            ? {}
-            : {
-                "data-src": attributes.src,
-              };
-        },
+        renderHTML: () => ({}),
       },
     };
   },
@@ -73,12 +67,7 @@ export const ExtensionTextDiagram = Node.create<TextDiagramOptions>({
         return [
           "text-diagram",
           mergeAttributes(HTMLAttributes),
-          [
-            "img",
-            {
-              src: HTMLAttributes["data-src"],
-            },
-          ],
+          node.attrs.content,
         ];
       case "mermaid":
         return [

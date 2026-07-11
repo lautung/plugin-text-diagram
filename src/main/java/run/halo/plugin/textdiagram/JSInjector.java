@@ -12,12 +12,16 @@ final class JSInjector {
     static String getRuntimeInjection(
         String darkClassSelector,
         String mermaidSelector,
-        String mobileLayoutMode
+        String mobileLayoutMode,
+        String mermaidOutputFormat,
+        String plantumlOutputFormat
     ) {
         String config = "{" +
             "\"darkClassSelector\":" + toJsonString(darkClassSelector) + "," +
             "\"mermaidSelector\":" + toJsonString(mermaidSelector) + "," +
-            "\"mobileLayoutMode\":" + toJsonString(mobileLayoutMode) +
+            "\"mobileLayoutMode\":" + toJsonString(mobileLayoutMode) + "," +
+            "\"mermaidOutputFormat\":" + toJsonString(mermaidOutputFormat) + "," +
+            "\"plantumlOutputFormat\":" + toJsonString(plantumlOutputFormat) +
             "}";
         return """
             <link rel="stylesheet" href="%s" data-halo-text-diagram-runtime-style>

@@ -10,6 +10,73 @@
 
 ---
 
+## 2026-07-11 输出格式与本地 PlantUML 渲染增量计划
+
+当前分支已完成独立前台运行时的主体实现。本增量计划替换旧的 PlantUML `data-src` 图片模式，并给 Mermaid 与 PlantUML 分别增加 `svg`、`png`、`webp` 输出格式配置。
+
+### 增量文件结构
+
+- Modify: `src/main/java/run/halo/plugin/textdiagram/BasicConfig.java`，增加 `mermaid_output_format`、`plantuml_output_format` 默认值和合法值回退。
+- Modify: `src/main/resources/extensions/settings.yaml`，增加 Mermaid 与 PlantUML 输出格式下拉配置。
+- Modify: `src/main/java/run/halo/plugin/textdiagram/JSInjector.java`，把两个输出格式注入 `data-config`。
+- Modify: `src/main/java/run/halo/plugin/textdiagram/DefaultPostContentHandler.java`、`DefaultSinglePageContentHandler.java`，传递新增配置。
+- Modify: `console/package.json`、`console/pnpm-lock.yaml`，增加 `@plantuml/core`。
+- Modify: `console/src/editor/text-diagram/index.ts`、`TextDiagramView.vue`，新 PlantUML 内容不再写入 `data-src`；旧内容仍可解析。
+- Modify: `console/src/runtime/text-diagram/types.ts`，增加 `DiagramOutputFormat` 和两类格式配置。
+- Create: `console/src/runtime/text-diagram/image-exporter.ts`，把 SVG 按配置输出为 SVG、PNG 或 WebP。
+- Modify: `console/src/runtime/text-diagram/mermaid-adapter.ts`，返回 SVG 基础结果并按 Mermaid 配置导出最终格式。
+- Modify: `console/src/runtime/text-diagram/plantuml-adapter.ts`，懒加载 `@plantuml/core` 本地渲染 SVG，并按 PlantUML 配置导出最终格式，旧 `data-src` 仅兜底。
+- Modify: `console/src/runtime/text-diagram/index.ts`，解析新增配置并传入适配器。
+- Test: 更新 `BasicConfigTest`、`JSInjectorTest`、运行时 adapter/index 测试，覆盖默认值、非法值、格式输出、旧 `data-src` 兼容和错误隔离。
+
+### 增量任务
+
+- [ ] **Task A: 后台配置和注入**
+
+增加两个配置字段，默认 `svg`，只允许 `svg|png|webp`。Java 注入 JSON 中新增 `mermaidOutputFormat`、`plantumlOutputFormat`，文章与单页处理器保持成对修改。
+
+Run: `.\gradlew.bat test --tests run.halo.plugin.textdiagram.BasicConfigTest --tests run.halo.plugin.textdiagram.JSInjectorTest --tests run.halo.plugin.textdiagram.DefaultPostContentHandlerTest --tests run.halo.plugin.textdiagram.DefaultSinglePageContentHandlerTest`
+
+Expected: `BUILD SUCCESSFUL`。
+
+- [ ] **Task B: 前端依赖和编辑器存储**
+
+安装 `@plantuml/core`。编辑器 PlantUML 预览可继续生成临时图片，但不得把临时图片 URL 写入节点属性；`renderHTML` 对新 PlantUML 节点输出源码和 `data-content`，不再输出 `data-src` 或子级 `<img>`。保留 `parseHTML` 读取旧 `data-src`。
+
+Run: `pnpm --dir console install`
+
+Expected: `console/pnpm-lock.yaml` 同步更新。
+
+- [ ] **Task C: 统一 SVG 导出器**
+
+实现 `image-exporter.ts`，输入 SVG 字符串、输出格式和文件前缀；`svg` 直接返回 SVG 元素，`png/webp` 通过 `Image` + Canvas 生成 Blob URL 与 `<img>`。转换失败抛出明确错误。
+
+Run: `pnpm --dir console run test:runtime -- image-exporter.test.ts`
+
+Expected: `svg/png/webp` 单元测试 PASS。
+
+- [ ] **Task D: Mermaid 与 PlantUML 适配器**
+
+Mermaid 继续用浏览器 Mermaid 生成 SVG，再调用导出器。PlantUML 改为懒加载 `@plantuml/core` 的 `renderToString`，在浏览器内生成 SVG，再调用导出器；旧 `data-src` 只在源码为空时作为图片兜底。
+
+Run: `pnpm --dir console run test:runtime -- mermaid-adapter.test.ts plantuml-adapter.test.ts`
+
+Expected: 两个适配器测试 PASS。
+
+- [ ] **Task E: 运行时配置、完整构建和真实页面验证**
+
+运行时解析新增格式配置，非法值回退 `svg`。执行运行时测试、类型检查、前端构建、Gradle 构建，并在 Halo 文章页确认两个图表按最新后台配置渲染。
+
+Run: `pnpm --dir console run test:runtime`
+
+Run: `pnpm --dir console run type-check`
+
+Run: `pnpm --dir console run build`
+
+Run: `.\gradlew.bat build`
+
+Expected: 全部成功。
+
 ## 文件结构
 
 ### 新建

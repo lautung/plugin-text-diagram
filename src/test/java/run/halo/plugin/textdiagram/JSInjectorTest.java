@@ -12,13 +12,17 @@ class JSInjectorTest {
         String html = JSInjector.getRuntimeInjection(
             "html[class~=dark]",
             "text-diagram[data-type=mermaid]",
-            "scroll"
+            "scroll",
+            "png",
+            "webp"
         );
 
         assertTrue(html.contains("/plugins/text-diagram/assets/static/text-diagram-runtime.css"));
         assertTrue(html.contains("/plugins/text-diagram/assets/static/text-diagram-runtime.js"));
         assertTrue(html.contains("data-halo-text-diagram-runtime"));
         assertTrue(html.contains("&quot;mobileLayoutMode&quot;:&quot;scroll&quot;"));
+        assertTrue(html.contains("&quot;mermaidOutputFormat&quot;:&quot;png&quot;"));
+        assertTrue(html.contains("&quot;plantumlOutputFormat&quot;:&quot;webp&quot;"));
         assertFalse(html.contains("function createCardShell"));
     }
 
@@ -27,7 +31,9 @@ class JSInjectorTest {
         String html = JSInjector.getRuntimeInjection(
             "html[data-theme=\"dark\"]\n</script><script>alert(1)</script>",
             ".diagram[data-label=\"a\\b\"]",
-            "thumbnail"
+            "thumbnail",
+            "svg",
+            "png"
         );
 
         assertFalse(html.contains("</script><script>alert(1)</script>"));

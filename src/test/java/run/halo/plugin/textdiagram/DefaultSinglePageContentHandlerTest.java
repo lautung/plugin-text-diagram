@@ -25,6 +25,8 @@ class DefaultSinglePageContentHandlerTest {
         assertTrue(result.getContent().contains("data-halo-text-diagram-runtime"));
         assertTrue(result.getContent().contains("text-diagram-runtime.js"));
         assertTrue(result.getContent().contains("&quot;mobileLayoutMode&quot;:&quot;scroll&quot;"));
+        assertTrue(result.getContent().contains("&quot;mermaidOutputFormat&quot;:&quot;svg&quot;"));
+        assertTrue(result.getContent().contains("&quot;plantumlOutputFormat&quot;:&quot;svg&quot;"));
         assertTrue(result.getContent().contains("text-diagram[data-type=mermaid]"));
         assertTrue(result.getContent().contains("<text-diagram data-type=\"mermaid\">"));
     }

@@ -13,15 +13,16 @@
 - 工具栏提供源码/预览切换、全屏、复制源码和下载。
 - 使用接近 ChatGPT 的细线 SVG 图标，并保持统一尺寸、线宽和状态反馈。
 - 自动跟随 Halo 前台明暗主题，并响应运行时主题变化。
+- 在 Halo 插件后台分别配置 Mermaid 与 PlantUML 的前台输出格式，支持 `svg`、`png`、`webp`，默认 `svg`。
 - 在 Halo 插件后台提供三种窄屏策略，默认使用横向滚动。
 - 保持首次加载、PJAX、重复渲染过滤、字体等待和 `htmlLabels: false` 等现有兼容行为。
 - 让任一图表的失败不影响正文和其他图表。
 
 ## 非目标
 
-- 不改变编辑器中图表节点的存储格式。
+- 不改变 Mermaid 的源码存储方式。
 - 不引入新的图表语言。
-- 不改变 PlantUML 服务端生成图片的现有方式。
+- 不再把 PlantUML 新内容依赖到保存时生成的 `data-src` 图片地址；旧内容中的 `data-src` 仅作为兼容兜底。
 - 不手工修改 `src/main/resources/ui`、`src/main/resources/static` 或其他构建生成内容。
 - 不为窄屏断点增加单独的管理员配置；断点固定为 `768px`。
 
@@ -47,7 +48,8 @@ console/src/runtime/text-diagram/
 - `card.ts`：创建统一卡片并管理工具栏、源码视图、全屏、复制和下载。
 - `types.ts`：定义运行时配置、图表适配器、渲染结果和错误结果接口。
 - `mermaid-adapter.ts`：加载并初始化 Mermaid，等待字体，渲染 SVG，转换语法及加载错误。
-- `plantuml-adapter.ts`：读取现有图片地址与源码，管理图片加载、下载信息和失败状态。
+- `plantuml-adapter.ts`：懒加载浏览器端 PlantUML 引擎，将源码渲染为 SVG，并保留旧 `data-src` 兼容兜底。
+- `image-exporter.ts`：把 Mermaid 或 PlantUML 生成的 SVG 按配置转换为 `svg`、`png` 或 `webp` 渲染结果。
 - `responsive.ts`：应用三种窄屏策略和固定 `768px` 断点。
 - `theme.ts`：检测明暗模式并监听主题变化。
 - `style.css`：卡片、工具栏、画布、源码、错误、全屏、暗色及窄屏样式。
@@ -68,6 +70,13 @@ Rsbuild 负责把运行时入口和样式生成到插件公开资源目录。Jav
 
 - `dark_class_selector`
 - `mermaid_selector`
+
+新增输出格式字段：
+
+- `mermaid_output_format`：Mermaid 前台展示和下载格式，取值 `svg`、`png`、`webp`，默认 `svg`。
+- `plantuml_output_format`：PlantUML 前台展示和下载格式，取值 `svg`、`png`、`webp`，默认 `svg`。
+
+后台配置在页面渲染时注入到前台运行时。已发布文章不固化输出格式，访客刷新文章页后立即按最新插件设置重新渲染。
 
 新增窄屏策略字段，取值为：
 
@@ -100,7 +109,9 @@ Mermaid 渲染继续满足：
 - `htmlLabels: false`。
 - 流程图设置 `useMaxWidth: false`，由卡片响应式策略控制展示。
 
-PlantUML 继续使用编辑器生成并保存的图片地址。适配器保留对应源码，使源码视图、复制和错误降级与 Mermaid 保持一致。
+PlantUML 使用 `@plantuml/core` 在访客浏览器中本地渲染。运行时只在页面存在 PlantUML 图时懒加载 PlantUML 引擎资源；源码优先来自 `data-content`，旧内容缺少源码但存在 `data-src` 时可退回到原图片地址显示。
+
+两种图表都先生成 SVG。若对应输出格式为 `svg`，运行时直接展示 SVG；若配置为 `png` 或 `webp`，运行时将 SVG 载入 Canvas 后导出对应 Blob URL。该转换只在非 SVG 配置下执行，转换失败时当前卡片显示错误并保留源码视图。
 
 ## 卡片与交互设计
 
@@ -122,8 +133,9 @@ Mermaid 和 PlantUML 共享同一套卡片结构：
 
 下载规则：
 
-- Mermaid 下载 SVG。
-- PlantUML 下载当前渲染图片，并保留由资源内容或地址确定的正确扩展名。
+- Mermaid 下载后台配置的当前输出格式。
+- PlantUML 下载后台配置的当前输出格式。
+- `png` 与 `webp` 下载使用前台生成的对象 URL；运行时清理时释放对象 URL。
 
 全屏规则：
 
@@ -149,7 +161,8 @@ Mermaid 和 PlantUML 共享同一套卡片结构：
 - 配置序列化失败：记录错误并保留原始正文。
 - Mermaid 加载失败或超时：当前卡片显示加载错误，保留源码、复制和全屏能力；清理失败的加载状态，使后续扫描可以重试。
 - Mermaid 语法错误：只标记当前图表，不阻断同页其他图表。
-- PlantUML 图片加载失败：显示图片加载错误，保留源码视图，禁用下载。
+- PlantUML 引擎加载或渲染失败：显示渲染错误，保留源码视图，禁用下载。
+- SVG 转 PNG/WebP 失败：显示转换错误，保留源码视图，禁用下载。
 - 剪贴板失败：切换到源码视图并选中内容，便于手动复制。
 - 节点移除或运行时清理：释放临时对象 URL，避免遗留无效下载资源。
 - 所有详细错误记录到浏览器控制台，但前台只显示简洁、可理解的信息。
@@ -159,6 +172,7 @@ Mermaid 和 PlantUML 共享同一套卡片结构：
 ### Java 单元测试
 
 - 设置为空、缺失和部分字段缺失时应用正确默认值。
+- Mermaid 与 PlantUML 输出格式为空、缺失或非法时回退 `svg`。
 - 配置字符串安全转义或安全序列化。
 - 文章与单页处理器注入相同资源和配置。
 - CSS/JS 资源只注入一次，公开路径正确。
@@ -168,6 +182,7 @@ Mermaid 和 PlantUML 共享同一套卡片结构：
 
 - 节点扫描、类型分发和重复节点过滤。
 - Mermaid 与 PlantUML 适配器的成功和失败结果。
+- SVG 到 `svg/png/webp` 的导出结果和失败降级。
 - 源码/预览切换、复制、下载、全屏和 `Escape`。
 - 复制失败时的源码选择降级。
 - 明暗主题运行时切换。
@@ -188,7 +203,9 @@ git diff --check
 ### Chrome 人工验收
 
 - Mermaid：合法语法、非法语法、宽图、多图及快速 PJAX 切换。
-- PlantUML：正常图片、图片失败、源码切换和下载。
+- Mermaid：分别选择 `svg`、`png`、`webp` 后展示和下载格式正确。
+- PlantUML：浏览器本地渲染、源码切换和下载。
+- PlantUML：分别选择 `svg`、`png`、`webp` 后展示和下载格式正确。
 - 浅色与深色主题运行时切换。
 - 桌面端及小于 `768px` 时的三种后台策略。
 - 工具栏图标、键盘焦点、全屏、复制和真实下载行为。
@@ -198,6 +215,8 @@ git diff --check
 
 - 文章和单页中的 Mermaid 与 PlantUML 均显示统一的 ChatGPT 风格卡片。
 - 当前仅显示源码的 Mermaid 场景恢复正常渲染。
+- Mermaid 与 PlantUML 按各自后台配置输出 `svg`、`png` 或 `webp`，设置变更后刷新文章页立即生效。
+- PlantUML 新内容不依赖保存时的 `data-src` 图片地址，旧 `data-src` 内容仍可降级显示。
 - 后台可选择三种窄屏策略，未配置时默认横向滚动。
 - 完整工具栏、自动主题、错误降级和 PJAX 行为通过自动化与 Chrome 验收。
 - 前台运行时逻辑从 Java 大文本块迁移到可类型检查、可独立测试的 TypeScript/CSS 源码。

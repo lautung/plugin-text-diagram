@@ -6,6 +6,8 @@ const config: RuntimeConfig = {
   darkClassSelector: "html.dark",
   mermaidSelector: "text-diagram[data-type=mermaid]",
   mobileLayoutMode: "scroll",
+  mermaidOutputFormat: "svg",
+  plantumlOutputFormat: "svg",
 };
 
 beforeEach(() => {
@@ -52,5 +54,24 @@ it("shows the message from a non-Error Mermaid failure", async () => {
   await runtime.scan();
 
   expect(document.querySelector("[data-text-diagram-error]")?.textContent).toBe("Mermaid syntax error");
+  runtime.destroy();
+});
+
+it("re-renders all browser-rendered diagrams when the theme changes", async () => {
+  document.body.innerHTML = `
+    <text-diagram data-type="mermaid" data-content="graph TD;A-->B"></text-diagram>
+    <text-diagram data-type="plantuml" data-content="@startuml\nA->B\n@enduml"></text-diagram>
+  `;
+  const mermaid = { render: vi.fn(async () => ({ element: document.createElement("svg"), filename: "x.svg", mimeType: "image/svg+xml" })) };
+  const plantuml = { render: vi.fn(async () => ({ element: document.createElement("svg"), filename: "x.svg", mimeType: "image/svg+xml" })) };
+  const runtime = createRuntime(config, { mermaid, plantuml });
+
+  await runtime.scan();
+  document.documentElement.className = "dark";
+  await new Promise((resolve) => window.setTimeout(resolve, 0));
+  await runtime.whenIdle();
+
+  expect(mermaid.render).toHaveBeenCalledTimes(2);
+  expect(plantuml.render).toHaveBeenCalledTimes(2);
   runtime.destroy();
 });

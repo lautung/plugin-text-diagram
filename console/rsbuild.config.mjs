@@ -24,6 +24,14 @@ export default rsbuildConfig({
             from: resolve(__dirname, "node_modules/mermaid/dist/mermaid.min.js"),
             to: resolve(__dirname, outDir, "../static/"),
           },
+          {
+            from: resolve(__dirname, "node_modules/@plantuml/core/plantuml.js"),
+            to: resolve(__dirname, outDir, "../static/"),
+          },
+          {
+            from: resolve(__dirname, "node_modules/@plantuml/core/viz-global.js"),
+            to: resolve(__dirname, outDir, "../static/"),
+          },
         ],
       },
       tools: {

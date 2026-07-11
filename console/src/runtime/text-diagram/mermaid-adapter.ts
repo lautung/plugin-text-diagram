@@ -1,4 +1,5 @@
-import type { DiagramAdapter, DiagramTheme, RenderResult } from "./types";
+import { exportSvg, type SvgInput } from "./image-exporter";
+import type { DiagramAdapter, DiagramOutputFormat, DiagramTheme, RenderResult } from "./types";
 
 const MERMAID_SRC = "/plugins/text-diagram/assets/static/mermaid.min.js";
 
@@ -6,6 +7,12 @@ export interface MermaidRuntime {
   initialize(config: Record<string, unknown>): void;
   run(options: { nodes: HTMLElement[] }): Promise<void>;
 }
+
+export type SvgExporter = (
+  svg: SvgInput,
+  format: DiagramOutputFormat,
+  filenamePrefix?: string,
+) => Promise<RenderResult>;
 
 declare global {
   interface Window {
@@ -46,6 +53,8 @@ export function loadMermaid(): Promise<MermaidRuntime> {
 
 export function createMermaidAdapter(
   loader: () => Promise<MermaidRuntime> = loadMermaid,
+  outputFormat: DiagramOutputFormat = "svg",
+  svgExporter: SvgExporter = exportSvg,
 ): DiagramAdapter {
   return {
     async render(_target: HTMLElement, source: string, theme: DiagramTheme): Promise<RenderResult> {
@@ -66,7 +75,7 @@ export function createMermaidAdapter(
         const svg = renderTarget.querySelector("svg");
         if (!svg) throw new Error("Mermaid 未生成 SVG");
         svg.remove();
-        return { element: svg, filename: "text-diagram.svg", mimeType: "image/svg+xml" };
+        return svgExporter(svg, outputFormat, "text-diagram");
       } finally {
         renderTarget.remove();
       }

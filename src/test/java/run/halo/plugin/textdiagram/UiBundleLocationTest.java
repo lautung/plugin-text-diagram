@@ -29,8 +29,12 @@ class UiBundleLocationTest {
     void shouldPackageFrontendRuntimeAssetsFromStaticLocation() {
         Path runtimeScript = Path.of("build/resources/main/static/text-diagram-runtime.js");
         Path runtimeStyle = Path.of("build/resources/main/static/text-diagram-runtime.css");
+        Path plantumlScript = Path.of("build/resources/main/static/plantuml.js");
+        Path vizScript = Path.of("build/resources/main/static/viz-global.js");
 
         assertTrue(Files.exists(runtimeScript), "frontend runtime JavaScript should be packaged");
         assertTrue(Files.exists(runtimeStyle), "frontend runtime CSS should be packaged");
+        assertTrue(Files.exists(plantumlScript), "PlantUML browser renderer should be packaged");
+        assertTrue(Files.exists(vizScript), "PlantUML Graphviz runtime should be packaged");
     }
 }
