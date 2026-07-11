@@ -42,3 +42,15 @@ it("isolates a failed diagram from the next diagram", async () => {
   expect(document.querySelectorAll("[data-text-diagram-state='ready']")).toHaveLength(1);
   runtime.destroy();
 });
+
+it("shows the message from a non-Error Mermaid failure", async () => {
+  document.body.innerHTML = `<text-diagram data-type="mermaid" data-content="bad"></text-diagram>`;
+  const mermaid = { render: vi.fn().mockRejectedValue({ message: "Mermaid syntax error" }) };
+  const plantuml = { render: vi.fn() };
+  const runtime = createRuntime(config, { mermaid, plantuml });
+
+  await runtime.scan();
+
+  expect(document.querySelector("[data-text-diagram-error]")?.textContent).toBe("Mermaid syntax error");
+  runtime.destroy();
+});

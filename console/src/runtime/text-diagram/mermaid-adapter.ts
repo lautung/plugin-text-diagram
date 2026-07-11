@@ -59,10 +59,17 @@ export function createMermaidAdapter(
       if (document.fonts?.ready) await document.fonts.ready;
       const renderTarget = document.createElement("div");
       renderTarget.textContent = source;
-      await mermaid.run({ nodes: [renderTarget] });
-      const svg = renderTarget.querySelector("svg");
-      if (!svg) throw new Error("Mermaid 未生成 SVG");
-      return { element: svg, filename: "text-diagram.svg", mimeType: "image/svg+xml" };
+      renderTarget.hidden = true;
+      document.body.append(renderTarget);
+      try {
+        await mermaid.run({ nodes: [renderTarget] });
+        const svg = renderTarget.querySelector("svg");
+        if (!svg) throw new Error("Mermaid 未生成 SVG");
+        svg.remove();
+        return { element: svg, filename: "text-diagram.svg", mimeType: "image/svg+xml" };
+      } finally {
+        renderTarget.remove();
+      }
     },
   };
 }

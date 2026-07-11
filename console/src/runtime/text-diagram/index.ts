@@ -30,6 +30,17 @@ function isDiagramType(value: string | undefined): value is DiagramType {
   return value === "mermaid" || value === "plantuml";
 }
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "object" && error !== null) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+    const description = (error as { str?: unknown }).str;
+    if (typeof description === "string") return description;
+  }
+  return String(error);
+}
+
 function createObjectUrl(element: HTMLElement | SVGElement, mimeType: string): string | undefined {
   if (typeof URL.createObjectURL !== "function") return undefined;
   const content = element instanceof SVGElement ? new XMLSerializer().serializeToString(element) : element.outerHTML;
@@ -55,7 +66,7 @@ export function createRuntime(
       if (record.objectUrl) record.card.setDownload(record.objectUrl, result.filename);
       record.host.dataset.textDiagramState = "ready";
     } catch (error) {
-      record.card.setError(error instanceof Error ? error.message : String(error));
+      record.card.setError(errorMessage(error));
       record.host.dataset.textDiagramState = "error";
       console.error("Text Diagram rendering failed", error);
     }
