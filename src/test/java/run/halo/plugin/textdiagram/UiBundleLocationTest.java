@@ -24,4 +24,13 @@ class UiBundleLocationTest {
             "runtime publicPath should match the packaged ui directory"
         );
     }
+
+    @Test
+    void shouldPackageFrontendRuntimeAssetsFromStaticLocation() {
+        Path runtimeScript = Path.of("build/resources/main/static/text-diagram-runtime.js");
+        Path runtimeStyle = Path.of("build/resources/main/static/text-diagram-runtime.css");
+
+        assertTrue(Files.exists(runtimeScript), "frontend runtime JavaScript should be packaged");
+        assertTrue(Files.exists(runtimeStyle), "frontend runtime CSS should be packaged");
+    }
 }

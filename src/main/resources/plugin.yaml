@@ -5,6 +5,7 @@ metadata:
 spec:
   enabled: true
   requires: ">=2.25.0"
+  version: "1.0.0-SNAPSHOT"
   author:
     name: Xin Keng
     website: https://github.com/xinkeng0
