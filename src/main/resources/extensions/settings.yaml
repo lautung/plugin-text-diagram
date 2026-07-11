@@ -17,3 +17,15 @@ spec:
           label: mermaid-CSS选择器
           value: "text-diagram[data-type=mermaid]"
           help: 用于匹配mermaid的CSS选择器
+        - $formkit: select
+          name: mobile_layout_mode
+          label: 移动端宽图显示方式
+          value: scroll
+          options:
+            - label: 横向滚动
+              value: scroll
+            - label: 自动缩放
+              value: scale
+            - label: 缩略图，点击全屏
+              value: thumbnail
+          help: 仅在屏幕宽度小于 768px 时生效
