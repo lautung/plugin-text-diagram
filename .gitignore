@@ -72,6 +72,7 @@ application-local.properties
 
 /console/node_modules/
 /workplace/
+/.worktrees/
 /src/main/resources/console/
 /src/main/resources/ui/
 /src/main/resources/static/
