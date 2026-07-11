@@ -55,12 +55,17 @@ function getPlantUmlEncoder() {
 import { nodeViewProps, NodeViewWrapper } from "@halo-dev/richtext-editor";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import IcOutlineTipsAndUpdates from "~icons/ic/outline-tips-and-updates";
+import IcOutlineCode from "~icons/ic/outline-code";
+import IcOutlineContentCopy from "~icons/ic/outline-content-copy";
+import IcOutlineDownload from "~icons/ic/outline-download";
 import IcOutlineFullscreen from "~icons/ic/outline-fullscreen";
 import IcOutlineFullscreenExit from "~icons/ic/outline-fullscreen-exit";
+import IcOutlinePlayArrow from "~icons/ic/outline-play-arrow";
 
 const props = defineProps(nodeViewProps);
 const previewRef = ref<HTMLElement>();
 const fullscreen = ref(false);
+const renderedSvg = ref("");
 let renderRequestId = 0;
 let previewTimer: number | undefined;
 
@@ -118,6 +123,7 @@ const doRenderPreview = async function (currentRequestId: number) {
   element.replaceChildren();
 
   if (!graphDefinition.trim()) {
+    renderedSvg.value = "";
     return;
   }
 
@@ -127,9 +133,11 @@ const doRenderPreview = async function (currentRequestId: number) {
         const { svg } = await renderMermaid(graphDefinition);
         if (!isCurrentRender(currentRequestId, element)) return;
 
+        renderedSvg.value = svg;
         element.innerHTML = svg;
       } catch (error) {
         if (isCurrentRender(currentRequestId, element)) {
+          renderedSvg.value = "";
           renderError(element, error);
         }
       }
@@ -146,9 +154,11 @@ const doRenderPreview = async function (currentRequestId: number) {
         if (props.node.attrs.src !== url) {
           props.updateAttributes({ src: url });
         }
+        renderedSvg.value = "";
         element.innerHTML = `<img src="${url}" alt="plantuml"/>`;
       } catch (error) {
         if (isCurrentRender(currentRequestId, element)) {
+          renderedSvg.value = "";
           renderError(element, error);
         }
       }
@@ -194,6 +204,51 @@ onBeforeUnmount(() => {
 function onEditorChange(value: string) {
   props.updateAttributes({ content: value });
 }
+
+function copyTextFallback(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus({ preventScroll: true });
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+function copySource() {
+  const source = props.node.attrs.content || "";
+  if (navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(source).catch(() => {
+      copyTextFallback(source);
+    });
+    return;
+  }
+  copyTextFallback(source);
+}
+
+function downloadSvg() {
+  if (!renderedSvg.value || languageValue.value !== "mermaid") {
+    return;
+  }
+
+  const blob = new Blob([renderedSvg.value], {
+    type: "image/svg+xml;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "text-diagram.svg";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 </script>
 <template>
   <node-view-wrapper
@@ -202,7 +257,10 @@ function onEditorChange(value: string) {
   >
     <div class="text-diagram-nav">
       <div class="text-diagram-nav-start">
-        <div>文本绘图</div>
+        <div class="text-diagram-title">
+          <IcOutlinePlayArrow />
+          <span>{{ language?.label || "文本绘图" }}</span>
+        </div>
         <select
           v-model="languageValue"
           class="text-diagram-type-select block px-2 py-1.5 text-sm text-gray-900 border border-gray-300 rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
@@ -226,13 +284,50 @@ function onEditorChange(value: string) {
         </a>
       </div>
       <div class="text-diagram-nav-end">
-        <div
-          class="text-diagram-fullscreen-icon"
+        <button
+          class="text-diagram-tool-button"
+          type="button"
+          contenteditable="false"
+          v-tooltip="'源码在左侧编辑区'"
+        >
+          <IcOutlineCode />
+        </button>
+        <button
+          class="text-diagram-tool-button text-diagram-tool-button-active"
+          type="button"
+          contenteditable="false"
+          v-tooltip="'实时预览'"
+        >
+          <IcOutlinePlayArrow />
+        </button>
+        <button
+          class="text-diagram-tool-button"
+          type="button"
+          contenteditable="false"
+          v-tooltip="'复制源码'"
+          @click="copySource"
+        >
+          <IcOutlineContentCopy />
+        </button>
+        <button
+          class="text-diagram-tool-button"
+          type="button"
+          contenteditable="false"
+          :disabled="languageValue !== 'mermaid' || !renderedSvg"
+          v-tooltip="'下载 SVG'"
+          @click="downloadSvg"
+        >
+          <IcOutlineDownload />
+        </button>
+        <button
+          class="text-diagram-tool-button"
+          type="button"
+          contenteditable="false"
           @click="fullscreen = !fullscreen"
         >
           <IcOutlineFullscreenExit v-if="fullscreen" v-tooltip="'退出全屏'" />
           <IcOutlineFullscreen v-else v-tooltip="'全屏'" />
-        </div>
+        </button>
       </div>
     </div>
     <div class="text-diagram-editor-panel">
@@ -253,17 +348,21 @@ function onEditorChange(value: string) {
 </template>
 <style>
 .text-diagram-container {
-  border: 1px #e7e7e7 solid;
-  border-radius: 4px;
+  border: 1px #e5e7eb solid;
+  border-radius: 14px;
   overflow: hidden;
   margin-top: 0.75em;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .text-diagram-nav {
-  border-bottom: 1px #e7e7e7 solid;
+  min-height: 52px;
+  border-bottom: 1px #e5e7eb solid;
   display: flex;
-  padding: 5px 10px;
+  padding: 8px 12px;
   align-items: center;
+  gap: 12px;
 }
 
 .text-diagram-nav-start {
@@ -275,13 +374,17 @@ function onEditorChange(value: string) {
 }
 
 .text-diagram-nav-end {
+  display: inline-flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
 }
 
 .text-diagram-editor-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: 100%;
+  min-height: 280px;
   height: 100%;
 }
 
@@ -291,13 +394,17 @@ function onEditorChange(value: string) {
 
 .text-diagram-code {
   height: 100%;
-  border-right: 1px #e7e7e7 solid;
+  border-right: 1px #e5e7eb solid;
 }
 
 .text-diagram-preview {
-  padding: 5px;
+  display: grid;
+  align-items: center;
+  padding: 24px;
   height: 100%;
   overflow: auto;
+  background: #f7f7f8;
+  overscroll-behavior: contain;
 }
 
 .text-diagram-preview svg {
@@ -333,17 +440,67 @@ function onEditorChange(value: string) {
   height: 100%;
   background: #fff;
   margin-top: 0;
+  border-radius: 0;
 }
 
-.text-diagram-fullscreen-icon {
-  cursor: pointer;
+.text-diagram-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+  color: #111827;
 }
 
-.text-diagram-fullscreen-icon svg {
+.text-diagram-title svg {
+  flex: 0 0 auto;
   font-size: 18px;
 }
 
-.text-diagram-fullscreen-icon:hover {
-  color: #999;
+.text-diagram-tool-button {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  color: #111827;
+  background: transparent;
+  cursor: pointer;
+}
+
+.text-diagram-tool-button svg {
+  font-size: 18px;
+}
+
+.text-diagram-tool-button:hover,
+.text-diagram-tool-button:focus-visible,
+.text-diagram-tool-button-active {
+  background: #ececf0;
+  outline: none;
+}
+
+.text-diagram-tool-button:disabled {
+  color: #a1a1aa;
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.text-diagram-fullscreen .text-diagram-editor-panel {
+  min-height: 0;
+  height: calc(100vh - 53px);
+}
+
+@media (max-width: 720px) {
+  .text-diagram-editor-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .text-diagram-code {
+    min-height: 220px;
+    border-right: 0;
+    border-bottom: 1px #e5e7eb solid;
+  }
 }
 </style>
